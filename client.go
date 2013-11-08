@@ -5,6 +5,7 @@ import "flag"
 import "bufio"
 import "os"
 import "strings"
+import "labix.org/v2/mgo/bson"
 import zmq "github.com/alecthomas/gozmq"
 
 func train(socket *zmq.Socket, alpha string, lambda string, iterations string){
@@ -25,7 +26,16 @@ func enterCmd(socket *zmq.Socket){
     } else {
       train(socket, parts[1], parts[2], parts[3])
     }
-
+  } else if strings.Contains(parts[0], "list") {
+    c := "list"
+    socket.Send([]byte(c), 0)
+    reply, _ := socket.Recv(0)
+    var output map[string]string
+    _ = bson.Unmarshal(reply, &output)
+    fmt.Println("Workers:")
+    for k,v := range output{
+      fmt.Printf("%s: %s\n\n", string(k), v)
+    }
   } else {
     fmt.Println("command not found\n")
   }

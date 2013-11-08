@@ -3,7 +3,9 @@ package main
 import "fmt"
 import "flag"
 import "strconv"
+import "strings"
 import "time"
+import "labix.org/v2/mgo/bson"
 import zmq "github.com/alecthomas/gozmq"
 
 var workers map[string]string = make(map[string]string) // workerId : description
@@ -40,29 +42,41 @@ func serve() {
     msg, _ := socket.Recv(0)
     cmd := string(msg)
     fmt.Println("-----------")
-    fmt.Println(cmd)
-    workerId := "-1"
-    maxTasks := 1000      
-    for ind, _ := range tasksWorkers{
-      status := statusWorkers[ind]
-      if status == "running"{
-	if tasksWorkers[ind] < maxTasks {
-	  workerId = ind
-	  maxTasks = tasksWorkers[ind]
-	}
+    cmds := strings.Split(cmd, " ")
+    fmt.Println(cmds)
+    if cmds[0] == "train"{
+      workerId := "-1"
+      maxTasks := 1000      
+      for ind, _ := range tasksWorkers{
+        status := statusWorkers[ind]
+        if status == "running"{
+	  if tasksWorkers[ind] < maxTasks {
+	    workerId = ind
+	    maxTasks = tasksWorkers[ind]
+	  }
+        }
       }
-    }
-    if workerId != "-1" {
-      reply, err := delegate(workerId, cmd)
-      if err != nil {
-        statusWorkers[workerId] = "disconnected"
-        socket.Send([]byte("no answer"), 0)
-      } else {
-        tasksWorkers[workerId] += 1
-        socket.Send([]byte(reply), 0)
+      if workerId != "-1" {
+        reply, err := delegate(workerId, cmd)
+        if err != nil {
+          statusWorkers[workerId] = "disconnected"
+          socket.Send([]byte("no answer"), 0)
+        } else {
+          tasksWorkers[workerId] += 1
+          socket.Send([]byte(reply), 0)
+        }
       }
+    } else if cmds[0] == "list"{
+        workersRepr :=  make(map[string] string)
+        for ind, desc := range workers{
+          tasks := strconv.Itoa(tasksWorkers[ind])
+	  fmt.Println(tasks)
+          workersRepr[ind] = fmt.Sprintf("%s | %s | %s", statusWorkers[ind], tasks,  desc) 
+        } 
+        data, _ := bson.Marshal(workersRepr)
+        socket.Send(data, 0)
     }
-  }
+  } 
 }
 
 func delegate(topic string, cmd string) (string, error) {
