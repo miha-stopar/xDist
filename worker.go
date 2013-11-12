@@ -3,6 +3,7 @@ package main
 import "fmt"
 import "flag"
 import "strings"
+import "io/ioutil"
 import "os/exec"
 import zmq "github.com/alecthomas/gozmq"
 
@@ -58,27 +59,33 @@ func main() {
       var response []byte
       var err error
       var ecmd *exec.Cmd
+      fmt.Println("-----------------------")
       fmt.Println(cmd)
-      fmt.Println(cmd[0])
-      fmt.Println(cmd[1:])
-      //ecmd = exec.Command(cmd[0], cmd[1:]...)
-      ecmd = exec.Command("python", "neural.py")
-      
-      error := ecmd.Start()
-      if error != nil {
-        response = []byte("error when starting a command")        
-      } else {
-        error = ecmd.Wait()
+      if cmd[0] == "execute" {
+        ecmd = exec.Command(cmd[1], cmd[2:]...)
+        error := ecmd.Start()
         if error != nil {
-          response = []byte("error when executing a command")        
+          response = []byte("error when starting a command")        
         } else {
-          response = []byte("command execution finished")        
+          error = ecmd.Wait()
+          if error != nil {
+            response = []byte("error when executing a command")        
+          } else {
+            response = []byte("command execution finished")        
+          }
         }
+        if err != nil {
+          //fmt.Println(err)
+        }
+      } else if cmd[0] == "results" {
+	content, err := ioutil.ReadFile("results.txt")
+	if err == nil {
+	  fmt.Println(content)
+	  response = []byte("file read")
+	}
+      } else if cmd[0] == "status" {
       }
-            
-      if err != nil {
-        //fmt.Println(err)
-      }
+      
       wsocket.Send([]byte(response), 0)
       _, _ = wsocket.Recv(0)
     }

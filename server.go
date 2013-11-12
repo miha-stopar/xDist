@@ -5,8 +5,8 @@ import "flag"
 import "strconv"
 import "strings"
 import "time"
-import "labix.org/v2/mgo/bson"
 import zmq "github.com/alecthomas/gozmq"
+import "encoding/json"
 
 var workers map[string]string = make(map[string]string) // workerId : description
 var statusWorkers map[string]string = make(map[string]string) // workerId : status
@@ -24,7 +24,7 @@ func waitRegistrations(){
     workerId := strconv.Itoa(count)
     println(workerId)
     workers[string(workerId)] = string(workerDesc)
-    statusWorkers[workerId] = "running"
+    statusWorkers[workerId] = "connected"
     tasksWorkers[workerId] = 0
     println("Got worker: ", string(workerDesc))
     rsocket.Send([]byte(workerId), 0)
@@ -44,37 +44,49 @@ func serve() {
     fmt.Println("-----------")
     cmds := strings.Split(cmd, " ")
     fmt.Println(cmds)
-    if cmds[0] == "train"{
-      workerId := "-1"
-      maxTasks := 1000      
-      for ind, _ := range tasksWorkers{
-        status := statusWorkers[ind]
-        if status == "running"{
-	  if tasksWorkers[ind] < maxTasks {
-	    workerId = ind
-	    maxTasks = tasksWorkers[ind]
-	  }
-        }
-      }
-      if workerId != "-1" {
-        reply, err := delegate(workerId, cmd)
-        if err != nil {
-          statusWorkers[workerId] = "disconnected"
-          socket.Send([]byte("no answer"), 0)
-        } else {
-          tasksWorkers[workerId] += 1
-          socket.Send([]byte(reply), 0)
-        }
+    if cmds[0] == "execute"{
+      workerId := cmds[1]
+      command := strings.Join(cmds[1:], " ")
+      fmt.Println(command)
+      reply, err := delegate(workerId, command)
+      if err != nil {
+        statusWorkers[workerId] = "disconnected"
+        socket.Send([]byte("no answer"), 0)
+      } else {
+        tasksWorkers[workerId] += 1
+        socket.Send([]byte(reply), 0)
       }
     } else if cmds[0] == "list"{
         workersRepr :=  make(map[string] string)
         for ind, desc := range workers{
           tasks := strconv.Itoa(tasksWorkers[ind])
-	  fmt.Println(tasks)
-          workersRepr[ind] = fmt.Sprintf("%s | %s | %s", statusWorkers[ind], tasks,  desc) 
+	  fmt.Println(statusWorkers[ind])
+	  if statusWorkers[ind] == "connected"{
+            workersRepr[ind] = fmt.Sprintf("tasks: %s | %s", tasks,  desc) 
+	  }
         } 
-        data, _ := bson.Marshal(workersRepr)
+        //data, _ := bson.Marshal(workersRepr)
+        data, _ := json.Marshal(workersRepr)
         socket.Send(data, 0)
+    } else if cmds[0] == "results"{
+      workerId := cmds[1]
+      reply, err := delegate(workerId, "results")
+      if err != nil {
+        statusWorkers[workerId] = "disconnected"
+        socket.Send([]byte("no answer"), 0)
+      } else {
+    	socket.Send([]byte(reply), 0)
+      }
+    } else if cmds[0] == "status"{
+      workerId := cmds[1]
+      reply, err := delegate(workerId, "status")
+      if err != nil {
+        statusWorkers[workerId] = "disconnected"
+        socket.Send([]byte("no answer"), 0)
+      } else {
+    	socket.Send([]byte(reply), 0)
+      }
+
     }
   } 
 }
@@ -98,7 +110,7 @@ func checkWorkers(){
       if err != nil{
 	statusWorkers[ind] = "disconnected"
       } else {
-        statusWorkers[ind] = "running"
+        statusWorkers[ind] = "connected"
       }
     }
   } 

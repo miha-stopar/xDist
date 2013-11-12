@@ -5,7 +5,7 @@ import "flag"
 import "bufio"
 import "os"
 import "strings"
-import "labix.org/v2/mgo/bson"
+import "encoding/json"
 import zmq "github.com/alecthomas/gozmq"
 
 func train(socket *zmq.Socket, alpha string, lambda string, iterations string){
@@ -20,25 +20,29 @@ func enterCmd(socket *zmq.Socket){
   fmt.Print("Enter command: ")
   command, _ := reader.ReadString('\n')
   parts := strings.Split(string(command), " ")
-  if strings.Contains(parts[0], "train") {
-    if len(parts) < 4 {
-      fmt.Println("not enough arguments\n")
-    } else {
-      train(socket, parts[1], parts[2], parts[3])
-    }
-  } else if strings.Contains(parts[0], "list") {
+  if strings.Contains(parts[0], "list") {
     c := "list"
     socket.Send([]byte(c), 0)
     reply, _ := socket.Recv(0)
     var output map[string]string
-    _ = bson.Unmarshal(reply, &output)
+    _ = json.Unmarshal(reply, &output)
     fmt.Println("Workers:")
     for k,v := range output{
       fmt.Printf("%s: %s\n\n", string(k), v)
     }
   } else {
-    fmt.Println("command not found\n")
-  }
+    socket.Send([]byte(command), 0)
+    reply, _ := socket.Recv(0)
+    if strings.Contains(parts[0], "results") {
+      var output map[string]string
+      _ = json.Unmarshal(reply, &output)
+      for k,v := range output{
+        fmt.Printf("%s: %s\n\n", string(k), v)
+      }
+    } else {
+      fmt.Println(reply)
+    }
+  }   
   enterCmd(socket)
 }
 
