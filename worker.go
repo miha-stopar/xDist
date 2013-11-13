@@ -1,10 +1,13 @@
 package main
 
 import "fmt"
+import "os"
 import "flag"
 import "strings"
 import "io/ioutil"
 import "os/exec"
+import "time"
+import "encoding/json"
 import zmq "github.com/alecthomas/gozmq"
 
 var ip *string = flag.String("ip", "127.0.0.1", "server IP address")
@@ -44,6 +47,8 @@ func main() {
   defer ccontext.Close()
   defer csocket.Close()
 
+  var tasks map[string]time.Time = make(map[string]time.Time)
+
   for {
     datapt, _ := socket.Recv(0)
     st := strings.Replace(string(datapt), "\n", "", -1)
@@ -63,27 +68,53 @@ func main() {
       fmt.Println(cmd)
       if cmd[0] == "execute" {
         ecmd = exec.Command(cmd[1], cmd[2:]...)
+	timeNow := time.Now()
         error := ecmd.Start()
         if error != nil {
           response = []byte("error when starting a command")        
         } else {
-          error = ecmd.Wait()
+          response = []byte("command execution started")
+	  identifier := strings.Join(cmd[1:], " ")
+	  tasks[identifier] = timeNow
+          /*error = ecmd.Wait()
           if error != nil {
             response = []byte("error when executing a command")        
           } else {
             response = []byte("command execution finished")        
           }
+	  */
         }
         if err != nil {
           //fmt.Println(err)
         }
       } else if cmd[0] == "results" {
-	content, err := ioutil.ReadFile("results.txt")
+	content, err := ioutil.ReadFile(cmd[1])
 	if err == nil {
 	  fmt.Println(content)
-	  response = []byte("file read")
+	  response = []byte(content)
 	}
       } else if cmd[0] == "status" {
+	statusRepr := make(map[string] string)
+  	for identifier, _ := range tasks{
+	  fmt.Println(identifier)
+	  fmt.Println(tasks[identifier])
+    	  parts := strings.Split(identifier, " ")
+	  fileName := parts[len(parts)-1]
+	  info, err := os.Stat(fileName)
+	  if err == nil {
+	    fmt.Println(info.ModTime())
+	    modified := tasks[identifier].Before(info.ModTime())
+	    if modified {
+	      statusRepr[identifier] = "done"
+	    } else {
+	      statusRepr[identifier] = "not done yet"
+	    }
+	  } else {
+	      statusRepr[identifier] = "something went wrong"
+	  }
+	}
+	fmt.Println(statusRepr)
+	response, _ = json.Marshal(statusRepr)
       }
       
       wsocket.Send([]byte(response), 0)

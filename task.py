@@ -1,7 +1,11 @@
+import sys
 import json
 
-f = open("results.txt", "w")
-r = {"score": 0.31}
+args = sys.argv
+output_file = args[-1]
+
+f = open(output_file, "w")
+r = {"score": 0.35}
 results = json.dumps(r)
 f.write(results)
 

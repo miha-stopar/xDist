@@ -44,19 +44,7 @@ func serve() {
     fmt.Println("-----------")
     cmds := strings.Split(cmd, " ")
     fmt.Println(cmds)
-    if cmds[0] == "execute"{
-      workerId := cmds[1]
-      command := strings.Join(cmds[1:], " ")
-      fmt.Println(command)
-      reply, err := delegate(workerId, command)
-      if err != nil {
-        statusWorkers[workerId] = "disconnected"
-        socket.Send([]byte("no answer"), 0)
-      } else {
-        tasksWorkers[workerId] += 1
-        socket.Send([]byte(reply), 0)
-      }
-    } else if cmds[0] == "list"{
+    if cmds[0] == "list"{
         workersRepr :=  make(map[string] string)
         for ind, desc := range workers{
           tasks := strconv.Itoa(tasksWorkers[ind])
@@ -68,9 +56,21 @@ func serve() {
         //data, _ := bson.Marshal(workersRepr)
         data, _ := json.Marshal(workersRepr)
         socket.Send(data, 0)
+    } else if cmds[0] == "execute"{
+      workerId := cmds[1]
+      command := cmds[0] + " " + strings.Join(cmds[2:], " ")
+      fmt.Println(command)
+      reply, err := delegate(workerId, command)
+      if err != nil {
+        statusWorkers[workerId] = "disconnected"
+        socket.Send([]byte("no answer"), 0)
+      } else {
+        tasksWorkers[workerId] += 1
+        socket.Send([]byte(reply), 0)
+      }
     } else if cmds[0] == "results"{
       workerId := cmds[1]
-      reply, err := delegate(workerId, "results")
+      reply, err := delegate(workerId, "results " + cmds[2])
       if err != nil {
         statusWorkers[workerId] = "disconnected"
         socket.Send([]byte("no answer"), 0)
@@ -86,7 +86,8 @@ func serve() {
       } else {
     	socket.Send([]byte(reply), 0)
       }
-
+    } else {
+    	socket.Send([]byte("command not known"), 0)
     }
   } 
 }
