@@ -41,9 +41,9 @@ func serve() {
   for {
     msg, _ := socket.Recv(0)
     cmd := string(msg)
-    fmt.Println("-----------")
+    //fmt.Println("-----------")
     cmds := strings.Split(cmd, " ")
-    fmt.Println(cmds)
+    //fmt.Println(cmds)
     if cmds[0] == "list"{
         workersRepr :=  make(map[string] string)
         for ind, desc := range workers{
@@ -59,7 +59,6 @@ func serve() {
     } else if cmds[0] == "execute"{
       workerId := cmds[1]
       command := cmds[0] + " " + strings.Join(cmds[2:], " ")
-      fmt.Println(command)
       reply, err := delegate(workerId, command)
       if err != nil {
         statusWorkers[workerId] = "disconnected"
@@ -68,6 +67,18 @@ func serve() {
         tasksWorkers[workerId] += 1
         socket.Send([]byte(reply), 0)
       }
+    } else if cmds[0] == "wait"{
+      workerId := cmds[1]
+      command := cmds[0] + " " + strings.Join(cmds[2:], " ")
+      reply, err := delegate(workerId, command)
+      if err != nil {
+        statusWorkers[workerId] = "disconnected"
+        socket.Send([]byte("no answer"), 0)
+      } else {
+        tasksWorkers[workerId] += 1
+        socket.Send([]byte(reply), 0)
+      }
+
     } else if cmds[0] == "results"{
       workerId := cmds[1]
       reply, err := delegate(workerId, "results " + cmds[2])
@@ -85,6 +96,20 @@ func serve() {
         socket.Send([]byte("no answer"), 0)
       } else {
     	socket.Send([]byte(reply), 0)
+      }
+    } else if cmds[0] == "wget"{
+        if len(cmds) < 3 {
+    	  socket.Send([]byte("arguments missing"), 0)
+        } else {
+        workerId := cmds[1]
+        target := cmds[2]
+        reply, err := delegate(workerId, "wget " + target)
+        if err != nil {
+          statusWorkers[workerId] = "disconnected"
+          socket.Send([]byte("no answer"), 0)
+        } else {
+      	  socket.Send([]byte(reply), 0)
+        }
       }
     } else {
     	socket.Send([]byte("command not known"), 0)

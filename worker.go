@@ -1,6 +1,7 @@
 package main
 
 import "fmt"
+import "io"
 import "os"
 import "flag"
 import "strings"
@@ -64,8 +65,8 @@ func main() {
       var response []byte
       var err error
       var ecmd *exec.Cmd
-      fmt.Println("-----------------------")
-      fmt.Println(cmd)
+      //fmt.Println("-----------------------")
+      //fmt.Println(cmd)
       if cmd[0] == "execute" {
         ecmd = exec.Command(cmd[1], cmd[2:]...)
 	timeNow := time.Now()
@@ -76,22 +77,39 @@ func main() {
           response = []byte("command execution started")
 	  identifier := strings.Join(cmd[1:], " ")
 	  tasks[identifier] = timeNow
-          /*error = ecmd.Wait()
-          if error != nil {
-            response = []byte("error when executing a command")        
-          } else {
-            response = []byte("command execution finished")        
-          }
-	  */
         }
         if err != nil {
           //fmt.Println(err)
+        }
+      } else if cmd[0] == "wait" {
+	filename := "parameters.txt"
+        f, err := os.Create(filename)
+        if err != nil {
+          fmt.Println(err)
+        }
+        n, err := io.WriteString(f, strings.Join(cmd[3:], " "))
+        if err != nil {
+          fmt.Println(n, err)
+        }
+        f.Close()
+        ecmd = exec.Command(cmd[1], cmd[2])
+	response, err = ecmd.Output()
+        if err != nil {
+          fmt.Println(err)
         }
       } else if cmd[0] == "results" {
 	content, err := ioutil.ReadFile(cmd[1])
 	if err == nil {
 	  fmt.Println(content)
 	  response = []byte(content)
+	}
+      } else if cmd[0] == "wget" {
+        ecmd := exec.Command("wget", cmd[1])
+	error := ecmd.Start()
+        if error != nil {
+          response = []byte("error when trying to download")
+        } else {
+          response = []byte("downloading started")
 	}
       } else if cmd[0] == "status" {
 	statusRepr := make(map[string] string)
@@ -102,15 +120,16 @@ func main() {
 	  fileName := parts[len(parts)-1]
 	  info, err := os.Stat(fileName)
 	  if err == nil {
-	    fmt.Println(info.ModTime())
 	    modified := tasks[identifier].Before(info.ModTime())
+	    fmt.Println("----------------")
+	    fmt.Println(modified)
 	    if modified {
 	      statusRepr[identifier] = "done"
 	    } else {
 	      statusRepr[identifier] = "not done yet"
 	    }
 	  } else {
-	      statusRepr[identifier] = "something went wrong"
+	      statusRepr[identifier] = "file does not exist"
 	  }
 	}
 	fmt.Println(statusRepr)
