@@ -65,8 +65,6 @@ func main() {
       var response []byte
       var err error
       var ecmd *exec.Cmd
-      //fmt.Println("-----------------------")
-      //fmt.Println(cmd)
       if cmd[0] == "execute" {
         ecmd = exec.Command(cmd[1], cmd[2:]...)
 	timeNow := time.Now()
@@ -102,6 +100,8 @@ func main() {
 	if err == nil {
 	  fmt.Println(content)
 	  response = []byte(content)
+	} else {
+	  response = []byte("retrieving results failed")
 	}
       } else if cmd[0] == "wget" {
         ecmd := exec.Command("wget", cmd[1])
@@ -121,8 +121,7 @@ func main() {
 	  info, err := os.Stat(fileName)
 	  if err == nil {
 	    modified := tasks[identifier].Before(info.ModTime())
-	    fmt.Println("----------------")
-	    fmt.Println(modified)
+	    //fmt.Println(modified)
 	    if modified {
 	      statusRepr[identifier] = "done"
 	    } else {
@@ -132,7 +131,7 @@ func main() {
 	      statusRepr[identifier] = "file does not exist"
 	  }
 	}
-	fmt.Println(statusRepr)
+	//fmt.Println(statusRepr)
 	response, _ = json.Marshal(statusRepr)
       }
       

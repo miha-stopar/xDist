@@ -56,64 +56,22 @@ func serve() {
         //data, _ := bson.Marshal(workersRepr)
         data, _ := json.Marshal(workersRepr)
         socket.Send(data, 0)
-    } else if cmds[0] == "execute"{
-      workerId := cmds[1]
-      command := cmds[0] + " " + strings.Join(cmds[2:], " ")
-      reply, err := delegate(workerId, command)
-      if err != nil {
-        statusWorkers[workerId] = "disconnected"
-        socket.Send([]byte("no answer"), 0)
+    } else {
+      if len(cmds) < 2{
+        socket.Send([]byte("not enough arguments"), 0)
       } else {
-        tasksWorkers[workerId] += 1
-        socket.Send([]byte(reply), 0)
-      }
-    } else if cmds[0] == "wait"{
-      workerId := cmds[1]
-      command := cmds[0] + " " + strings.Join(cmds[2:], " ")
-      reply, err := delegate(workerId, command)
-      if err != nil {
-        statusWorkers[workerId] = "disconnected"
-        socket.Send([]byte("no answer"), 0)
-      } else {
-        tasksWorkers[workerId] += 1
-        socket.Send([]byte(reply), 0)
-      }
-
-    } else if cmds[0] == "results"{
-      workerId := cmds[1]
-      reply, err := delegate(workerId, "results " + cmds[2])
-      if err != nil {
-        statusWorkers[workerId] = "disconnected"
-        socket.Send([]byte("no answer"), 0)
-      } else {
-    	socket.Send([]byte(reply), 0)
-      }
-    } else if cmds[0] == "status"{
-      workerId := cmds[1]
-      reply, err := delegate(workerId, "status")
-      if err != nil {
-        statusWorkers[workerId] = "disconnected"
-        socket.Send([]byte("no answer"), 0)
-      } else {
-    	socket.Send([]byte(reply), 0)
-      }
-    } else if cmds[0] == "wget"{
-        if len(cmds) < 3 {
-    	  socket.Send([]byte("arguments missing"), 0)
-        } else {
         workerId := cmds[1]
-        target := cmds[2]
-        reply, err := delegate(workerId, "wget " + target)
+        command := cmds[0] + " " + strings.Join(cmds[2:], " ")
+        reply, err := delegate(workerId, command)
         if err != nil {
           statusWorkers[workerId] = "disconnected"
           socket.Send([]byte("no answer"), 0)
         } else {
-      	  socket.Send([]byte(reply), 0)
+          tasksWorkers[workerId] += 1
+          socket.Send([]byte(reply), 0)
         }
       }
-    } else {
-    	socket.Send([]byte("command not known"), 0)
-    }
+    }     
   } 
 }
 

@@ -33,15 +33,17 @@ func enterCmd(socket *zmq.Socket){
   } else {
     socket.Send([]byte(command), 0)
     reply, _ := socket.Recv(0)
+    fmt.Println(string(reply))
+    /*
     if strings.Contains(parts[0], "results") {
-      var output map[string]string
       _ = json.Unmarshal(reply, &output)
       for k,v := range output{
         fmt.Printf("%s: %s\n\n", string(k), v)
       }
     } else {
-      fmt.Println(reply)
+      fmt.Println(string(reply))
     }
+    */
   }   
   enterCmd(socket)
 }
