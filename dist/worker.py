@@ -1,6 +1,10 @@
+import sys
 from subprocess import call
 import zmq
 from gradientcmd import command
+
+# start as (ip and desc parameters are optional)
+# python worker.py 192.168.1.12 "description ..."
 
 #var ip *string = flag.String("ip", "127.0.0.1", "server IP address")
 ip = "127.0.0.1"
@@ -9,6 +13,10 @@ desc = "this is a worker ..."
 tasks = {}
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+	ip = sys.argv[1]
+    if len(sys.argv) > 2:
+	desc = sys.argv[2]
     address = "tcp://%s" % ip
     rcontext = zmq.Context()
     rsocket = rcontext.socket(zmq.REQ)
