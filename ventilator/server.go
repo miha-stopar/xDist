@@ -11,41 +11,28 @@ func serve() {
   socket.Bind(fmt.Sprintf("%s:16653", address))
   defer context.Close()
   defer socket.Close()
-  
-  for {
-    msg, _ := socket.Recv(0)
-    cmd := string(msg)
-    senderSocket.Send([]byte(cmd), 0)
-    socket.Send([]byte("task sent to worker"), 0)
-  } 
-}
 
-func catchSinkResults() {
-  context, _ := zmq.NewContext()
-  socket, _ := context.NewSocket(zmq.REP)
-  socket.Bind(fmt.Sprintf("%s:16653", address))
-  defer context.Close()
-  defer socket.Close()
-  
   for {
     msg, _ := socket.Recv(0)
     cmd := string(msg)
-    //fmt.Println("-----------")
     cmds := strings.Split(cmd, " ")
     //fmt.Println(cmds)
-    if cmds[0] == "list"{
-        socket.Send([]byte("not available for ventilator"), 0)
+    if cmds[0] == "all"{ // publish to all workers
+	c := strings.Join(cmds[1:], " ")
+        psocket.Send([]byte(c), 0)
+        socket.Send([]byte("dummy"), 0)
     } else {
       if len(cmds) < 1{
         socket.Send([]byte("not enough arguments"), 0)
       } else {
 	senderSocket.Send([]byte(cmd), 0)
+        socket.Send([]byte("dummy"), 0)
       }
     }     
   } 
 }
 
-
+var psocket *zmq.Socket
 var senderSocket *zmq.Socket
 var sinkSocket *zmq.Socket
 var ip *string = flag.String("ip", "127.0.0.1", "public IP address of this very computer")
@@ -66,6 +53,12 @@ func main() {
   defer sinkSocket.Close()
   sinkSocket.Connect(fmt.Sprintf("%s:16650", address))
   sinkSocket.Send([]byte("0"), 0) // start batch
+
+  pcontext, _ := zmq.NewContext()
+  psocket, _ = pcontext.NewSocket(zmq.PUB)
+  defer pcontext.Close()
+  defer psocket.Close()
+  psocket.Bind(fmt.Sprintf("%s:16651", address))
 
   go serve()
   var inp string

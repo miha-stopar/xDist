@@ -41,7 +41,7 @@ func main() {
           response = []byte("error when starting a command")        
         }
       }
-      sinkSocket.Send([]byte(response), 0)
+      sinkSocket.Send(response, 0)
     }
 }
 
