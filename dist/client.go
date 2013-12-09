@@ -25,7 +25,12 @@ func enterCmd(socket *zmq.Socket){
     }
   } else {
     socket.Send([]byte(command), 0)
+    socket.Send([]byte(command), 0)
+    fmt.Println("====")
     reply, _ := socket.Recv(0)
+    fmt.Println(string(reply))
+    fmt.Println("+++++")
+    reply, _ = socket.Recv(0)
     fmt.Println(string(reply))
     /*
     if strings.Contains(parts[0], "results") {
@@ -48,7 +53,7 @@ var address string
 func main() {
   flag.Parse();
   context, _ := zmq.NewContext()
-  socket, _ := context.NewSocket(zmq.REQ)
+  socket, _ := context.NewSocket(zmq.DEALER)
   address = fmt.Sprintf("tcp://%s", *ip)
   add := fmt.Sprintf("%s:16653", address)
   socket.Connect(add)

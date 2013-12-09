@@ -32,18 +32,12 @@ func waitRegistrations(){
 }
 
 func serve() {
-  context, _ := zmq.NewContext()
-  socket, _ := context.NewSocket(zmq.REP)
-  socket.Bind(fmt.Sprintf("%s:16653", address))
-  defer context.Close()
-  defer socket.Close()
-  
   for {
+    idbla, _ = socket.Recv(0)
     msg, _ := socket.Recv(0)
     cmd := string(msg)
-    //fmt.Println("-----------")
     cmds := strings.Split(cmd, " ")
-    //fmt.Println(cmds)
+    fmt.Println(cmds)
     if cmds[0] == "list"{
         workersRepr :=  make(map[string] string)
         for ind, desc := range workers{
@@ -62,25 +56,28 @@ func serve() {
       } else {
         workerId := cmds[1]
         command := cmds[0] + " " + strings.Join(cmds[2:], " ")
-        reply, err := delegate(workerId, command)
-        if err != nil {
-          statusWorkers[workerId] = "disconnected"
-          socket.Send([]byte("no answer"), 0)
-        } else {
-          tasksWorkers[workerId] += 1
-          socket.Send([]byte(reply), 0)
-        }
+        msg := fmt.Sprintf("%s %s", workerId, command)
+        psocket.Send([]byte(msg), 0)
       }
     }     
   } 
 }
 
-func delegate(topic string, cmd string) (string, error) {
-  msg := fmt.Sprintf("%s %s", topic, cmd)
-  psocket.Send([]byte(msg), 0)
-  reply, err := wsocket.Recv(0)
-  wsocket.Send([]byte("dummy"), 0)
-  return string(reply), err
+func waitReplies(){
+  for {
+    reply, err := wsocket.Recv(0)
+    wsocket.Send([]byte("dummy"), 0)
+    fmt.Println("--------------")
+    fmt.Println(string(reply))
+    if err != nil {
+      //statusWorkers[workerId] = "disconnected"
+      socket.Send([]byte("no answer"), 0)
+    } else {
+      //tasksWorkers[workerId] += 1
+      socket.Send(idbla, zmq.SNDMORE) //TODO: reply to ID who actually sent request
+      socket.Send([]byte(reply), 0)
+    }
+  }
 }
 
 func checkWorkers(){
@@ -100,6 +97,8 @@ func checkWorkers(){
   } 
 }
 
+var idbla []byte
+var socket *zmq.Socket
 var psocket *zmq.Socket
 var wsocket *zmq.Socket
 var csocket *zmq.Socket
@@ -109,6 +108,13 @@ var address string
 func main() {
   flag.Parse();
   address = fmt.Sprintf("tcp://%s", *ip)
+
+  context, _ := zmq.NewContext()
+  socket, _ = context.NewSocket(zmq.ROUTER)
+  socket.Bind(fmt.Sprintf("%s:16653", address))
+  defer context.Close()
+  defer socket.Close()
+
   pcontext, _ := zmq.NewContext()
   psocket, _ = pcontext.NewSocket(zmq.PUB)
   defer pcontext.Close()
@@ -116,7 +122,7 @@ func main() {
   psocket.Bind(fmt.Sprintf("%s:16654", address))
 
   wcontext, _ := zmq.NewContext() // connected to workers
-  wsocket, _ = wcontext.NewSocket(zmq.REP)
+  wsocket, _ = wcontext.NewSocket(zmq.DEALER)
   //wsocket.SetRcvTimeout(1000 * time.Millisecond)
   defer wcontext.Close()
   defer wsocket.Close()
@@ -132,6 +138,7 @@ func main() {
   go waitRegistrations()
   go serve()
   go checkWorkers()
+  go waitReplies()
 
   var inp string
   fmt.Scanln(&inp)

@@ -29,7 +29,7 @@ func main() {
   sinkSocket.Recv(0)
 
   rContext, _ := zmq.NewContext()
-  rSocket, _ = rContext.NewSocket(zmq.REQ)
+  rSocket, _ = rContext.NewSocket(zmq.REQ) // client won't be able to Bind to this socket, if sink is on a remote machine
   defer rContext.Close()
   defer rSocket.Close()
   rSocket.Connect(fmt.Sprintf("%s:16652", address))

@@ -37,7 +37,7 @@ func main() {
   socket.Connect(fmt.Sprintf("%s:16654", address))
 
   wcontext, _ := zmq.NewContext()
-  wsocket, _ := wcontext.NewSocket(zmq.REQ)
+  wsocket, _ := wcontext.NewSocket(zmq.DEALER)
   wsocket.Connect(fmt.Sprintf("%s:16650", address))
   defer wcontext.Close()
   defer wsocket.Close()
@@ -62,6 +62,7 @@ func main() {
       _, _ = csocket.Recv(0)
     } else {
       cmd := temps[1:]
+      fmt.Println(cmd)
       var response []byte
       var err error
       var ecmd *exec.Cmd

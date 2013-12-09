@@ -6,7 +6,8 @@ from gradientcmd import command
 
 # python worker.py 192.168.1.12
 
-ip = "127.0.0.1"
+#ip = "127.0.0.1"
+ip = "198.101.154.21"
 address = "tcp://%s" % ip
 desc = "this is a worker ..."
 tasks = {}
