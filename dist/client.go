@@ -25,23 +25,8 @@ func enterCmd(socket *zmq.Socket){
     }
   } else {
     socket.Send([]byte(command), 0)
-    socket.Send([]byte(command), 0)
-    fmt.Println("====")
     reply, _ := socket.Recv(0)
     fmt.Println(string(reply))
-    fmt.Println("+++++")
-    reply, _ = socket.Recv(0)
-    fmt.Println(string(reply))
-    /*
-    if strings.Contains(parts[0], "results") {
-      _ = json.Unmarshal(reply, &output)
-      for k,v := range output{
-        fmt.Printf("%s: %s\n\n", string(k), v)
-      }
-    } else {
-      fmt.Println(string(reply))
-    }
-    */
   }   
   enterCmd(socket)
 }

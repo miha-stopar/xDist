@@ -10,7 +10,8 @@ import "encoding/json"
 
 var workers map[string]string = make(map[string]string) // workerId : description
 var statusWorkers map[string]string = make(map[string]string) // workerId : status
-var tasksWorkers map[string]int = make(map[string]int) // workerId : number of tasks
+var tasksCounter map[string]int = make(map[string]int) // workerId : number of tasks
+//var workerTasks map[string]string = make(map[string]string) // workerId : client_id+" "+cmd
 
 func waitRegistrations(){
   rcontext, _ := zmq.NewContext()
@@ -25,7 +26,7 @@ func waitRegistrations(){
     println(workerId)
     workers[string(workerId)] = string(workerDesc)
     statusWorkers[workerId] = "connected"
-    tasksWorkers[workerId] = 0
+    tasksCounter[workerId] = 0
     println("Got worker: ", string(workerDesc))
     rsocket.Send([]byte(workerId), 0)
   }
@@ -37,44 +38,73 @@ func serve() {
     msg, _ := socket.Recv(0)
     cmd := string(msg)
     cmds := strings.Split(cmd, " ")
-    fmt.Println(cmds)
+    //fmt.Println(cmds)
     if cmds[0] == "list"{
         workersRepr :=  make(map[string] string)
         for ind, desc := range workers{
-          tasks := strconv.Itoa(tasksWorkers[ind])
-	  fmt.Println(statusWorkers[ind])
+          tasks := strconv.Itoa(tasksCounter[ind])
 	  if statusWorkers[ind] == "connected"{
             workersRepr[ind] = fmt.Sprintf("tasks: %s | %s", tasks,  desc) 
 	  }
         } 
         //data, _ := bson.Marshal(workersRepr)
         data, _ := json.Marshal(workersRepr)
+        socket.Send(idbla, zmq.SNDMORE) //TODO: reply to ID which actually sent request
         socket.Send(data, 0)
     } else {
       if len(cmds) < 2{
+        socket.Send(idbla, zmq.SNDMORE) //TODO: reply to ID which actually sent request
         socket.Send([]byte("not enough arguments"), 0)
       } else {
-        workerId := cmds[1]
-        command := cmds[0] + " " + strings.Join(cmds[2:], " ")
-        msg := fmt.Sprintf("%s %s", workerId, command)
-        psocket.Send([]byte(msg), 0)
+ 	if cmds[1] == "all" {
+          for ind, _ := range workers{
+            //command := cmds[0] + " " + string(idbla) + " "  + strings.Join(cmds[2:], " ")
+            command := cmds[0] + " " + strings.Join(cmds[2:], " ")
+	    delegate(command, ind)
+	  }
+ 	} else if cmds[1] == "-1" {
+	  workerId := "-1"
+    	  maxTasks := 1000      
+    	  for ind, _ := range tasksCounter{
+      	    status := statusWorkers[ind]
+      	    if status == "connected"{
+              if tasksCounter[ind] < maxTasks {
+                workerId = ind
+                maxTasks = tasksCounter[ind]
+              }
+            }
+    	  }
+    	  if workerId != "-1" {
+            command := cmds[0] + " " + strings.Join(cmds[2:], " ")
+	    delegate(command, workerId)
+          }
+	} else {
+          workerId := cmds[1]
+          command := cmds[0] + " " + strings.Join(cmds[2:], " ")
+	  delegate(command, workerId)
+	}
       }
     }     
   } 
+}
+
+func delegate(command string, workerId string){
+  msg := fmt.Sprintf("%s %s", workerId, command)
+  psocket.Send([]byte(msg), 0)
+  tasksCounter[workerId] += 1
+  //workerTasks[workerId] //TODO
 }
 
 func waitReplies(){
   for {
     reply, err := wsocket.Recv(0)
     wsocket.Send([]byte("dummy"), 0)
-    fmt.Println("--------------")
-    fmt.Println(string(reply))
+    //fmt.Println(string(reply))
     if err != nil {
       //statusWorkers[workerId] = "disconnected"
       socket.Send([]byte("no answer"), 0)
     } else {
-      //tasksWorkers[workerId] += 1
-      socket.Send(idbla, zmq.SNDMORE) //TODO: reply to ID who actually sent request
+      socket.Send(idbla, zmq.SNDMORE) //TODO: reply to ID which actually sent request and update (-1) tasksCounter counter
       socket.Send([]byte(reply), 0)
     }
   }
