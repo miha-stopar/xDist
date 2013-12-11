@@ -5,6 +5,7 @@ import "flag"
 import "strconv"
 import "strings"
 import "time"
+import "math/rand"
 import zmq "github.com/alecthomas/gozmq"
 import "encoding/json"
 
@@ -42,9 +43,10 @@ func serve() {
     if cmds[0] == "list"{
         workersRepr :=  make(map[string] string)
         for ind, desc := range workers{
-          tasks := strconv.Itoa(tasksCounter[ind])
+          //tasks := strconv.Itoa(tasksCounter[ind])
 	  if statusWorkers[ind] == "connected"{
-            workersRepr[ind] = fmt.Sprintf("tasks: %s | %s", tasks,  desc) 
+            //workersRepr[ind] = fmt.Sprintf("tasks: %s | %s", tasks,  desc) 
+            workersRepr[ind] = fmt.Sprintf("%s", desc) 
 	  }
         } 
         //data, _ := bson.Marshal(workersRepr)
@@ -63,6 +65,8 @@ func serve() {
 	    delegate(command, ind)
 	  }
  	} else if cmds[1] == "-1" {
+	  workerId := chooseId()
+	  /* TODO
 	  workerId := "-1"
     	  maxTasks := 1000      
     	  for ind, _ := range tasksCounter{
@@ -74,6 +78,7 @@ func serve() {
               }
             }
     	  }
+	  */
     	  if workerId != "-1" {
             command := cmds[0] + " " + strings.Join(cmds[2:], " ")
 	    delegate(command, workerId)
@@ -86,6 +91,46 @@ func serve() {
       }
     }     
   } 
+}
+
+func chooseId() string{
+  // TODO
+  workerId := "0"
+  c := 0
+  for ind, _ := range tasksCounter{
+    status := statusWorkers[ind]
+    if status == "connected"{
+      c = c + 1
+    }
+  }
+  rand.Seed(time.Now().Unix())
+  i := rand.Intn(c)
+
+  k := 0
+  for ind, _ := range tasksCounter{
+    status := statusWorkers[ind]
+    if status == "connected"{
+      if k == i {
+	  workerId = ind
+	  break
+      }
+    }
+    k += 1
+  }
+  if lastId == workerId && c > 1{
+	  for ind, _ := range tasksCounter{
+	    status := statusWorkers[ind]
+	    if status == "connected"{
+	      if ind != lastId {
+		  workerId = ind
+		  break
+	      }
+	    }
+	  }
+  }
+  
+  lastId = workerId
+  return workerId
 }
 
 func delegate(command string, workerId string){
@@ -127,6 +172,7 @@ func checkWorkers(){
   } 
 }
 
+var lastId string = "-1"
 var idbla []byte
 var socket *zmq.Socket
 var psocket *zmq.Socket

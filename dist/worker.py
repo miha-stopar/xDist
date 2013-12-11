@@ -1,12 +1,13 @@
 import sys
+import os
 from subprocess import check_output, call
 import zmq
-from gradientcmd import command
+#from gradientcmd import command
 
 # python worker.py 192.168.1.12
 
-#ip = "127.0.0.1"
-ip = "198.101.154.21"
+ip = "127.0.0.1"
+#ip = "198.101.154.21"
 address = "tcp://%s" % ip
 desc = "this is a worker ..."
 tasks = {}
@@ -42,8 +43,9 @@ if __name__ == "__main__":
             	msg = msg[:-1]
             cmd = msg.split(" ")
 	    cmd = cmd[1:] # remove worker_id
-	    #if cmd[0] != "checkWorker":
+	    if cmd[0] != "checkWorker":
 	    #	print cmd[0]
+	    	print cmd
 
 	    response = ""
 	    if cmd[0] == "checkWorker":
@@ -53,11 +55,13 @@ if __name__ == "__main__":
             elif cmd[0] == "addCommand":
                 source_url = cmd[1]
                 file_name = source_url.split("/")[-1]
-                file_name = file_name[:-3] # remove ".py"
-                call(["wget", source_url])
-                module = __import__(file_name)
-                imported_modules[file_name] = module           
+                module_name = file_name[:-3] # remove ".py"
+		if not os.path.exists(file_name):
+                    call(["wget", source_url])
+                module = __import__(module_name)
+                imported_modules[module_name] = module           
             elif cmd[0] == "execute":
+		print cmd[1:]
                 response = check_output(cmd[1:])
 	    elif cmd[0] == "gradient":
                 response = command(" ".join(cmd[1:]))
@@ -66,10 +70,13 @@ if __name__ == "__main__":
                 # - command name is the same as downloaded file name (via addCommand)
                 # - file that was downloaded contains function "command"
                 file_name = cmd[0]
-                response = imported_modules[file_name].__dict__["command"](cmd[1:])
+                response = imported_modules[file_name].__dict__["command"](" ".join(cmd[1:]))
+		print "command execution finished"
 	    wsocket.send(response, copy=False)
 	except Exception as e:
+	    print "----------"
 	    print e
+	    wsocket.send(str(e), copy=False)
 
            
 
