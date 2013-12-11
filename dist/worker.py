@@ -9,17 +9,15 @@ import zmq
 #ip = "127.0.0.1"
 ip = "198.101.154.21"
 address = "tcp://%s" % ip
-desc = "this is a worker ..."
+desc = "worker on miha-computer"
 tasks = {}
 imported_modules = {}
         
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         ip = sys.argv[1]
-	print ip
     if len(sys.argv) == 3:
         desc = sys.argv[2]
-	print desc
     
     rcontext = zmq.Context()
     rsocket = rcontext.socket(zmq.REQ)
@@ -47,9 +45,9 @@ if __name__ == "__main__":
             	msg = msg[:-1]
             cmd = msg.split(" ")
 	    cmd = cmd[1:] # remove worker_id
-	    if cmd[0] != "checkWorker":
+	    #if cmd[0] != "checkWorker":
 	    #	print cmd[0]
-	    	print cmd
+	    #	print cmd
 
 	    response = ""
 	    if cmd[0] == "checkWorker":
@@ -65,7 +63,7 @@ if __name__ == "__main__":
                 module = __import__(module_name)
                 imported_modules[module_name] = module           
             elif cmd[0] == "execute":
-		print cmd[1:]
+		#print cmd[1:]
                 response = check_output(cmd[1:])
 	    elif cmd[0] == "gradient":
                 response = command(" ".join(cmd[1:]))
@@ -75,11 +73,11 @@ if __name__ == "__main__":
                 # - file that was downloaded contains function "command"
                 file_name = cmd[0]
                 response = imported_modules[file_name].__dict__["command"](" ".join(cmd[1:]))
-		print "command execution finished"
+		#print "command execution finished"
 	    wsocket.send(response, copy=False)
 	except Exception as e:
-	    print "----------"
-	    print e
+	    #print "----------"
+	    #print e
 	    wsocket.send(str(e), copy=False)
 
            
