@@ -16,6 +16,10 @@ imported_modules = {}
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         ip = sys.argv[1]
+	print ip
+    if len(sys.argv) == 3:
+        desc = sys.argv[2]
+	print desc
     
     rcontext = zmq.Context()
     rsocket = rcontext.socket(zmq.REQ)
